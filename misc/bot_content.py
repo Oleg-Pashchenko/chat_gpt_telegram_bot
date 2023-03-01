@@ -16,6 +16,7 @@ normal_mode_message = "Выбран режим обычных запросов.\
 please_wait_message = "Подождите, запрос обрабатывается..."
 choose_commands_message = "Введите названия команд (Пример: Реал Мадрид - Ливерпуль):"
 choose_date_message = "Введите дату события:"
+incorrect_input_format = "Неправильный формат ввода!\n\n"
 ### Buttons ###
 predict_button = InlineKeyboardButton(text="Прогноз", callback_data=f"predict")
 normal_mode_button = InlineKeyboardButton(
