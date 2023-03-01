@@ -1,4 +1,6 @@
 import asyncio
+import json
+import random
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -13,7 +15,7 @@ API_TOKEN = secure_data.TELEGRAM_API_KEY
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
-
+storage = {}
 
 @dp.message_handler(commands=["start"])
 async def start_command(message: types.Message):
@@ -121,15 +123,30 @@ async def get_info_predict_mode_command(message: types.Message, state: FSMContex
     sport_type = information['sport_type']
     commands_names = information['commands_names']
     date = message.text.strip()
-    question = f"Выдай пример прогноза на это событие: Тип спорта: {sport_type}" \
-               f" Участники: {commands_names} Дата: {date}" \
-               f"Главное: Пиши только на русском языке с правильными формами слов, обязательно овтеть на все вопросы! В ответе распиши эти параметры: {bot_content.sport_types[sport_type]}. Напиши по пунктам ответы максммально кратко, без лишней информации, каждый ответ пиши в формате Вопрос: Ответ. Каждый ответ должен быть с новой строки. В самом начале своего сообщения упомяни тип спорта, дату и команды."
     await state.finish()
     await message.answer(bot_content.please_wait_message)
-    loop = asyncio.get_event_loop()
-    response = await loop.run_in_executor(None, make_openai_request, question)
-    await message.answer(f"Запрос: {sport_type}, {commands_names}, {date}\n\nОтвет: "
-                         + response)
+    if f"{sport_type}{commands_names}{date}".lower() in storage.keys():
+        response = random.choice(storage[f"{sport_type}{commands_names}{date}".lower()])
+    else:
+        question = f"The main thing: The response from you should be an array of strings in JSON format in the format ['question - answer', '...']" \
+                   f"Give an example of the forecast with random but correct values for this event in Russian. Type of sport: {sport_type}" \
+                   f" Participants: {commands_names} Date: {date}" \
+                   f"Questions: {bot_content.sport_types[sport_type]}. " \
+                   f"The answers should be short and should be combined with each other " \
+                   f"(there should be no logical errors). Check all the facts that you write among themselves."
+        fl = True
+        while fl:
+            try:
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(None, make_openai_request, question)
+                print(response)
+                response = response.replace('Answer: ', '').strip().replace("'", '"')
+                storage[f"{sport_type}{commands_names}{date}".lower()] = json.loads(response)
+                fl = False
+            except:
+                pass
+        response = random.choice(storage[f"{sport_type}{commands_names}{date}".lower()])
+    await message.answer(f"{sport_type}, {commands_names}, {date}\n" + response)
     await delete_previous_messages(chat_id=message.chat.id,
                                    message_ids=[message.message_id + 1, message.message_id, message.message_id - 1,
                                                 message.message_id - 2, message.message_id - 3])
